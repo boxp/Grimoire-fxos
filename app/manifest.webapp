@@ -1,0 +1,15 @@
+{
+  "name": "Grimoire",
+  "description": "A Twitter client written by clojure",
+  "launch_path": "/index.html",
+  "type": "privileged",
+  "permissions": {
+    "systemXHR": {
+      "description": "for OAuth"
+    }
+  },
+  "icons": {
+    "128": "/img/icons/Grimoire_fxos_128_icon.png",
+    "512": "/img/icons/Grimoire_fxos_512_icon.png"
+  }
+}
