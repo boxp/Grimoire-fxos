@@ -2,7 +2,7 @@
   (:require-macros [grimoire-fxos.macros :refer [defkey]]
                    [cljs.core.async.macros :refer [go-loop go]])
   (:require [grimoire-fxos.twitter :refer [consumer-key->violet
-                                           access-token->violet
+                                           load-accounts!
                                            load-access-token
                                            fetch-access-token!
                                            start stop]]
@@ -25,12 +25,13 @@
         (add-tweet! $)))
 
 (defn main []
-  (go (let [violet (or (some-> (load-access-token) (access-token->violet consumer-key))
+  (go (let [violet (or (-> (consumer-key->violet consumer-key) load-accounts!)
                        (-> (consumer-key->violet consumer-key)
                            fetch-access-token! <!))]
+        (.log js/console violet)
         (initialize-view! violet)
         ;; start user stream
         (start violet status-listener))))
 
 (set! (. js/window -onload) main)
-(set! *print-fn* #(.log js/console %))
+(enable-console-print!)

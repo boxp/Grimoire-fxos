@@ -17,7 +17,8 @@
   (set! (.. js/document (querySelector "#newTweetSection") -className) "right skin-organic")
   (set! (.. js/document (querySelector "[data-position=\"current\"]") -className) "current skin-organic"))
 
-(defn initialize-view!  [violet]
+(defn initialize-view!  
+  [violet]
   (-> :#newPostButton
       sel1
       (listen! :click focus-new-tweet-section))
@@ -32,13 +33,16 @@
                    (-> violet (post-with-media (-> :#newTweetText sel1 value) file) <! print)
                    (-> violet (post (-> :#newTweetText sel1 value)) <! print)))))))
 
+(defn initialize-action-menu!
+  [violet tweet])
+
 (defn add-tweet!
   [tweet]
-  (->> (create [:li
-                 [:a {:href "#"}
-                   [:aside.tweetIcon
-                     [:img {:src (-> tweet :user :profile_image_url)}]]
-                   [:p ^:text (-> tweet :user :name)
-                       [:em (str " @" (-> tweet :user :screen_name))]]
-                   [:p.tweetText (-> tweet :text)]]])
-      (prepend! (sel1 :#tweetBox))))
+  (as-> (create [:li
+                  [:a {:href "#"}
+                    [:aside.tweetIcon
+                      [:img {:src (-> tweet :user :profile_image_url)}]]
+                    [:p ^:text (-> tweet :user :name)
+                        [:em (str " @" (-> tweet :user :screen_name))]]
+                    [:p.tweetText (-> tweet :text)]]]) $
+        (prepend! (sel1 :#tweetBox) $)))

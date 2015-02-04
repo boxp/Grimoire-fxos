@@ -199,8 +199,8 @@
       }
     </style>
     <link rel="stylesheet" href="app.css">
-    <script src="js/vendor/sha1.js"></script>
-    <script src="js/vendor/violet.js"></script>
+    <!-- <script src="js/vendor/sha1.js"></script> -->
+    <script src="js/vendor/violet.min.js"></script>
     <script src="js/app.js"></script>
   </head>
   <body>
@@ -221,9 +221,32 @@
         </section>
     </section>
 
+    <!-- ----------------- Tweet Menu -------------------- -->
+    <section id="tweetMenu" class="fullscreen" role="region" data-position="back">
+      <form role="dialog" data-type="action">
+        <li>
+          <a href="#">
+            <aside class="tweetIcon">
+              <img id="tweetMenuIcon">
+              </img>
+            </aside>
+            <p id="tweetMenuUserName">
+            </p>
+            <p id="tweetMenuText">
+            </p>
+          </a>
+        </li>
+        <menu>
+          <button id="tweetMenuReply">Reply</button>
+          <button id="tweetMenuFav">Favorite</button>
+          <button id="tweetMenuRetweet">Retweet</button>
+        </menu>
+      </form>
+    </section>
+
     <!-- ----------------- New Tweet Page -------------------- -->
 
-    <section class="skin-organic" role="region" id="newTweetSection" data-position="right">
+    <section class="skin-organc" role="region" id="newTweetSection" data-position="right">
         <header class="fixed">
             <a id="backButton" href="#">
                 <span class="icon icon-back">back</span>

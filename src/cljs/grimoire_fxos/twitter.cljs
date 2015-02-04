@@ -2,35 +2,36 @@
   (:require-macros [cljs.core.async.macros :refer [go go-loop]])
   (:require [cljs.core.async :refer [put! <! >! chan]]))
 
+(def JSON js/JSON)
+
+(defn add-account!
+  [violet account]
+  (.. violet -accounts (add (. account -accountId)
+                            (. account -screenName)
+                            (. account -accessToken)
+                            (. account -acceTokenSecret))))
+
 (defn consumer-key->violet
   [consumer-key]
-  (.init js/Violet
-    (clj->js {:consumer_key (:key consumer-key)
-              :consumer_secret (:secret consumer-key)})))
+  (js/Violet.
+    (clj->js {:consumerKey (:key consumer-key)
+              :consumerSecret (:secret consumer-key)})))
 
-(defn access-token->violet
-  [access-token consumer-key]
-  (.init js/Violet
-    (clj->js {:consumer_key (:key consumer-key)
-              :consumer_secret (:secret consumer-key)
-              :access_token (:key access-token)
-              :access_token_secret (:secret access-token)})))
+(defn save-accounts!
+  [violet]
+  (->> (.getList violet)
+       (map #(.get violet %))
+       JSON.stringify))
 
-(defn save-access-token
-  [access-token-key access-token-secret]
-  (.. js/localStorage (setItem "accessTokenKey" access-token-key))
-  (.. js/localStorage (setItem "accessTokenSecret" access-token-secret)))
-
-(defn load-access-token []
-  (let [access-token-key (.. js/localStorage (getItem "accessTokenKey"))
-        access-token-secret (.. js/localStorage (getItem "accessTokenSecret"))]
-    (if access-token-key
-      {:key access-token-key
-       :secret access-token-secret})))
+(defn load-accounts! 
+  [violet]
+  (some->> (.. js/localStorage (getItem "accounts"))
+           JSON.parse
+           (map #(add-account! violet %)) doall))
 
 (defn fetch-auth-url [violet]
   (let [c (chan)]
-    (go (.. violet -oauth (obtainAuthorizeURI #(put! c %) #(put! c %)))
+    (go (.. violet -accounts (obtainAuthorizeURI #(put! c %) #(put! c %)))
         (<! c))))
 
 (defn fetch-access-token!
@@ -53,11 +54,11 @@
 
 (defn start
   [violet listener]
-  (.. violet -streaming (start listener #(print %))))
+  (.. violet -streaming (startUserStream listener #(print %))))
 
 (defn stop
   [violet]
-  (.. violet -streaming stop))
+  (.. violet -streaming stopUserStream))
 
 (defn post
   [violet text]
@@ -73,4 +74,26 @@
                            "media[]" media})]
         (print data)
         (.request violet "statuses/update_with_media" data #(put! c %) #(put! c %))
+        (-> c <! js->clj))))
+
+(defn reply
+  [violet text target]
+  (go (let [c (chan)
+            data (clj->js {:status (str "@" (-> target :user :screen_name) " " text)
+                           :in_reply_to_status_id (-> target :user :id)})]
+        (.request violet "statuses/update" data #(put! c %) #(put! c %))
+        (-> c <! js->clj))))
+
+(defn fav
+  [violet id]
+  (go (let [c (chan)
+            data (clj->js {:id id})]
+        (.request violet "favorites/create" data #(put! c %) #(put! c %))
+        (-> c <! js->clj))))
+
+(defn unfav
+  [violet id]
+  (go (let [c (chan)
+            data (clj->js {:id id})]
+        (.request violet "favorites/destroy" data #(put! c %) #(put! c %))
         (-> c <! js->clj))))
