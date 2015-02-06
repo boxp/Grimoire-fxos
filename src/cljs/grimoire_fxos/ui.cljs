@@ -33,9 +33,6 @@
                    (-> violet (post-with-media (-> :#newTweetText sel1 value) file) <! print)
                    (-> violet (post (-> :#newTweetText sel1 value)) <! print)))))))
 
-(defn initialize-action-menu!
-  [violet tweet])
-
 (defn add-tweet!
   [tweet]
   (as-> (create [:li

@@ -22,4 +22,4 @@
         :optimizations :simple
         :output-to "app/js/app.js"
         :externs ["jslib/violet_externs.js"]
-        :pretty-print false}}]})
+        :pretty-print true}}]})

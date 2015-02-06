@@ -3,9 +3,10 @@
                    [cljs.core.async.macros :refer [go-loop go]])
   (:require [grimoire-fxos.twitter :refer [consumer-key->violet
                                            load-accounts!
-                                           load-access-token
-                                           fetch-access-token!
-                                           start stop]]
+                                           add-account!
+                                           verify-account!
+                                           post
+                                           start! stop]]
             [grimoire-fxos.ui :refer [initialize-view!
                                       add-tweet!]]
             [cljs.core.async :refer [<! >! chan]]
@@ -17,7 +18,7 @@
 (def tweets (atom []))
 
 (defn status-listener
-  [status]
+  [account-id stream-type  status]
   (as-> status $
         (js->clj $ :keywordize-keys true)
         (swap! tweets conj $)
@@ -27,11 +28,11 @@
 (defn main []
   (go (let [violet (or (-> (consumer-key->violet consumer-key) load-accounts!)
                        (-> (consumer-key->violet consumer-key)
-                           fetch-access-token! <!))]
+                           verify-account! <!))]
         (.log js/console violet)
         (initialize-view! violet)
         ;; start user stream
-        (start violet status-listener))))
+        (start! violet (.. violet -accounts getPrimary) {:tweet status-listener}))))
 
 (set! (. js/window -onload) main)
 (enable-console-print!)

@@ -6,10 +6,10 @@
 
 (defn add-account!
   [violet account]
-  (.. violet -accounts (add (. account -accountId)
-                            (. account -screenName)
-                            (. account -accessToken)
-                            (. account -acceTokenSecret))))
+  (.. violet -accounts (add (get account "accountId")
+                            (get account "screenName")
+                            (get account "accessToken")
+                            (get account "accessTokenSecret"))))
 
 (defn consumer-key->violet
   [consumer-key]
@@ -19,22 +19,28 @@
 
 (defn save-accounts!
   [violet]
-  (->> (.getList violet)
-       (map #(.get violet %))
-       JSON.stringify))
+  (as-> (.. violet -accounts getList) $
+        (map #(.. violet -accounts (get %)) $)
+        (into-array $)
+        (JSON.stringify $)
+        (.. js/localStorage (setItem "accounts" $))))
 
 (defn load-accounts! 
   [violet]
-  (some->> (.. js/localStorage (getItem "accounts"))
-           JSON.parse
-           (map #(add-account! violet %)) doall))
+  (let [accounts (.. js/localStorage (getItem "accounts"))]
+    (when accounts
+      (some->> accounts
+               JSON.parse
+               js->clj
+               (map #(add-account! violet %)) doall)
+      violet)))
 
-(defn fetch-auth-url [violet]
+(defn- fetch-auth-url [violet]
   (let [c (chan)]
-    (go (.. violet -accounts (obtainAuthorizeURI #(put! c %) #(put! c %)))
+    (go (.. violet -accounts requestAuthorizeURI (then #(put! c %) #(put! c %)))
         (<! c))))
 
-(defn fetch-access-token!
+(defn verify-account!
   [violet]
   (go (let [c (chan)
             url (<! (fetch-auth-url violet))
@@ -43,18 +49,20 @@
                                  :data {:type "url"
                                         :url url}}))
             pin (js/prompt "Please enter your PIN: " "")]
-        (.. violet -oauth (obtainAccessToken pin #(go 
-                                                   (set! (.-access_token violet) (. % -oauth_token))
-                                                   (set! (.-access_tokensecret violet) (. % -oauth_token_secret))
-                                                   (save-access-token (. violet -access_token)
-                                                                      (. violet -access_tokensecret))
-                                                   (put! c violet))
-                                                #(put! c violet)))
-        (<! c))))
+        (.. violet -accounts (addWithPIN pin) (then #(put! c :succeed) #(put! c :failed)))
+        (println "Verify pin code: " (<! c))
+        (save-accounts! violet)
+        violet)))
 
-(defn start
-  [violet listener]
-  (.. violet -streaming (startUserStream listener #(print %))))
+(defn start!
+  "Recognize listeners and start UserStream
+   Example: (start! violet 39393939 {:tweet println})"
+  [violet account-id listeners]
+  (doall (map 
+           #(.. violet -streaming (on (-> % key name)
+                                      (val %)))
+           listeners))
+  (.. violet -streaming (startUserStream account-id)))
 
 (defn stop
   [violet]
@@ -64,7 +72,9 @@
   [violet text]
   (go (let [c (chan)
             data (clj->js {:status text})]
-        (.request violet "statuses/update" data #(put! c %) #(put! c %))
+        (.. violet -rest -statuses -update 
+                   (on "success" #(put! c %)))
+        (.. violet -rest -statuses (update data))
         (-> c <! js->clj))))
 
 (defn post-with-media
@@ -72,8 +82,9 @@
   (go (let [c (chan)
             data (clj->js {"status" text
                            "media[]" media})]
-        (print data)
-        (.request violet "statuses/update_with_media" data #(put! c %) #(put! c %))
+        (.. violet -rest -media -upload 
+                   (on "success" #(put! c %)))
+        (.. violet -rest -media (upload data))
         (-> c <! js->clj))))
 
 (defn reply
